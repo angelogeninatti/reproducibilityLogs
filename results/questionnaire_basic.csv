@@ -1,0 +1,36 @@
+condition,question,mean,std
+0,All the results were relevant to the related query,3.23,1.341
+0,At least one result was relevant to the selected query,4.47,0.774
+0,The results were repetitive,2.845,1.154
+0,The results allowed me to satisfy the requested query,4.165,0.871
+0,The results were insufficient to satisfy my query,2.055,1.176
+1,All the results were relevant to the related query,3.221,1.339
+1,At least one result was relevant to the selected query,4.364,0.857
+1,The results were repetitive,2.985,1.152
+1,The results allowed me to satisfy the requested query,3.995,0.925
+1,The results were insufficient to satisfy my query,2.118,1.048
+4,All the results were relevant to the related query,2.965,1.321
+4,At least one result was relevant to the selected query,4.463,0.753
+4,The results were repetitive,2.871,1.139
+4,The results allowed me to satisfy the requested query,3.9,1.079
+4,The results were insufficient to satisfy my query,2.164,1.171
+2,All the results were relevant to the related query,3.18,1.403
+2,At least one result was relevant to the selected query,4.41,0.873
+2,The results were repetitive,2.755,1.147
+2,The results allowed me to satisfy the requested query,3.91,1.087
+2,The results were insufficient to satisfy my query,2.095,1.138
+3,All the results were relevant to the related query,3.266,1.314
+3,At least one result was relevant to the selected query,4.261,0.894
+3,The results were repetitive,2.947,1.143
+3,The results allowed me to satisfy the requested query,3.963,0.919
+3,The results were insufficient to satisfy my query,2.154,1.177
+5,All the results were relevant to the related query,3.361,1.333
+5,At least one result was relevant to the selected query,4.345,0.867
+5,The results were repetitive,2.918,1.159
+5,The results allowed me to satisfy the requested query,4.015,0.916
+5,The results were insufficient to satisfy my query,2.211,1.236
+7,All the results were relevant to the related query,3.574,1.255
+7,At least one result was relevant to the selected query,4.228,0.963
+7,The results were repetitive,2.766,1.301
+7,The results allowed me to satisfy the requested query,4.162,0.881
+7,The results were insufficient to satisfy my query,2.041,1.174

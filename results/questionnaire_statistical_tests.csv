@@ -1,0 +1,31 @@
+question,comparison_condition,t_test_p_value,classic_tost_p_value,bootstrap_tost_p_value
+All the results were relevant to the related query,1.0,0.94,0.008,0.008
+All the results were relevant to the related query,4.0,0.05,0.301,0.301
+All the results were relevant to the related query,2.0,0.72,0.017,0.013
+All the results were relevant to the related query,3.0,0.79,0.015,0.016
+All the results were relevant to the related query,5.0,0.33,0.066,0.07
+All the results were relevant to the related query,7.0,0.01,0.549,0.522
+At least one result was relevant to the selected query,1.0,0.2,0.116,0.132
+At least one result was relevant to the selected query,4.0,0.92,0.008,0.007
+At least one result was relevant to the selected query,2.0,0.47,0.039,0.045
+At least one result was relevant to the selected query,3.0,0.01,0.496,0.5
+At least one result was relevant to the selected query,5.0,0.13,0.164,0.168
+At least one result was relevant to the selected query,7.0,0.01,0.595,0.595
+The results were repetitive,1.0,0.23,0.1,0.098
+The results were repetitive,4.0,0.82,0.012,0.013
+The results were repetitive,2.0,0.44,0.044,0.046
+The results were repetitive,3.0,0.38,0.057,0.051
+The results were repetitive,5.0,0.54,0.032,0.03
+The results were repetitive,7.0,0.53,0.033,0.028
+The results allowed me to satisfy the requested query,1.0,0.06,0.271,0.273
+The results allowed me to satisfy the requested query,4.0,0.01,0.569,0.578
+The results allowed me to satisfy the requested query,2.0,0.01,0.527,0.508
+The results allowed me to satisfy the requested query,3.0,0.03,0.402,0.388
+The results allowed me to satisfy the requested query,5.0,0.1,0.205,0.193
+The results allowed me to satisfy the requested query,7.0,0.98,0.007,0.009
+The results were insufficient to satisfy my query,1.0,0.58,0.028,0.018
+The results were insufficient to satisfy my query,4.0,0.35,0.059,0.058
+The results were insufficient to satisfy my query,2.0,0.73,0.016,0.018
+The results were insufficient to satisfy my query,3.0,0.41,0.052,0.055
+The results were insufficient to satisfy my query,5.0,0.2,0.116,0.121
+The results were insufficient to satisfy my query,7.0,0.9,0.009,0.01
