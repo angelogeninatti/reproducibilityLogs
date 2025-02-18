@@ -125,5 +125,8 @@ Additional Python modules contain implementation utilities and are not intended 
 - `df_test_log.bin`: Database state snapshot
 - `2022.qrels.pass.withDupes.txt`: TREC qrels file (required only for `relevance_statistics.py`, if not using pre-computed mappings)
 
+### Rankings
+The generated rankings can be found in a separate data repository on Zenodo: https://zenodo.org/records/14886328
+
 ### Web application for the user study
 The code for the web application is available at https://github.com/angelogeninatti/reproducibility-UI
