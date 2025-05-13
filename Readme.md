@@ -94,6 +94,11 @@ Module to generate cleaner outputs from the base analysis after it is run:
 ### `relevance_statistics.py`
 Module to compare the relevance of the documents in the user study with the relevance of the documents in the TREC qrels file.
 
+
+### `compute_KTU_per_query.py`
+Module to compute the KTU for each query. It generates `results/ktu.pkl`, which is used by the base analysis.
+To generate `ktu.pkl` from scratch, `rankings.json` (which is detailed above) needs to be present in the `results` folder.
+
 ### Generating simulated clicks
 #### `sample_dataset.py`
 Generates random samples from the user study dataset. Researchers may:
