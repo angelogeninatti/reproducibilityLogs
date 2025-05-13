@@ -79,6 +79,7 @@ Primary analysis implementation for the user study data. It generates the follow
 - `pvalue_table_*.csv`: p-values for the t-test for all metrics across conditions, both for the choose and expand signals.
 - `questionnaire_basic.csv`: mean and standard deviation for all questionnaire responses across conditions
 - `tost_tests_*.csv`: p-values for the TOST test for all metrics across conditions, both for the choose and expand signals.
+- `*_by_ktu_bin.pdf`: plots showing the average of each metric by KTU bin, both for the choose and expand signals.
 
 Execution options:
 - Keep `processed_logs.pkl` to only perform statistical analysis

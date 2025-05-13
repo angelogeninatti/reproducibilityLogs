@@ -9,14 +9,23 @@ import numpy as np
 import pandas as pd
 import tqdm
 from dotenv import load_dotenv
+from matplotlib import pyplot as plt
 from scipy import stats
 from scipy.stats import ttest_ind
-
-from connection_data import *
 
 load_dotenv()
 
 from logs import Logs
+
+def load_ktu_data(ktu_file='./results/ktu.pkl'):
+    """Load KTU values from the pickle file."""
+    with open(ktu_file, 'rb') as f:
+        return pickle.load(f)
+
+def assign_ktu_bin(ktu_value):
+    """Assign a bin (-4 to 5) based on KTU value (-1 to 1)."""
+    bin_index = int((ktu_value + 1) * 5) - 5
+    return max(min(bin_index, 5), -4)
 
 # Add classic TOST test function
 def tost_test(x, y, epsilon):
@@ -256,45 +265,6 @@ def create_default_click_types():
 def create_default_conditions():
     return defaultdict(create_default_click_types)
 
-
-def process_single_user(args):
-    user_id, timeline = args
-
-    metrics, exp_condition, num_included_queries, excluded = calculate_metrics(timeline)
-    questionnaire_data = analyze_questionnaire(timeline, excluded)
-
-    condition_key = f"b={exp_condition['b']},k1={exp_condition['k1']},batch_size={exp_condition['batch_size']}"
-
-    # Convert defaultdict to regular dict for serialization
-    metrics_dict = {
-        click_type: {
-            metric: list(values) for metric, values in click_metrics.items()
-        } for click_type, click_metrics in metrics.items()
-    }
-
-    questionnaire_dict = {
-        question: list(answers) for question, answers in questionnaire_data.items()
-    }
-    return (
-        condition_key, metrics_dict, questionnaire_dict, num_included_queries, user_id)
-
-
-def merge_results(result, all_metrics, all_questionnaire_data):
-    if result is None:
-        return
-
-    condition_key, metrics, questionnaire_data, num_queries, user_id = result
-
-    # Merge metrics
-    for click_type, click_metrics in metrics.items():
-        for metric, values in click_metrics.items():
-            all_metrics[condition_key][click_type][metric].extend(values)
-
-    # Merge questionnaire data
-    for question, answers in questionnaire_data.items():
-        all_questionnaire_data[condition_key][question].extend(answers)
-
-
 def format_pvalue_table(test_results, metrics_list, click_type):
     # Define the conditions in order
     conditions = [
@@ -348,6 +318,156 @@ def save_pvalue_tables(all_metrics, results_dir):
 
     return choose_table, expand_table
 
+
+def process_single_user(args):
+    user_id, timeline = args
+
+    # Load KTU data
+    try:
+        ktu_data = load_ktu_data()
+    except FileNotFoundError:
+        print("Warning: KTU data file not found. Skipping KTU binning.")
+        ktu_data = None
+
+    metrics, exp_condition, num_included_queries, excluded = calculate_metrics(timeline)
+    questionnaire_data = analyze_questionnaire(timeline, excluded)
+
+    condition_key = f"b={exp_condition['b']},k1={exp_condition['k1']},batch_size={exp_condition['batch_size']}"
+
+    # Initialize binned metrics if KTU data is available
+    metrics_by_bin = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+
+    # Process KTU binning if data is available
+    if ktu_data:
+        system_key = f"({exp_condition['batch_size']}, {exp_condition['b']}, {exp_condition['k1']})"
+
+        # Process each query for KTU binning
+        qrels_binarized = read_qrels('2022.qrels.pass.withDupes.txt', binarize_threshold=2)
+
+        for event in timeline.get_logs("search_results"):
+            try:
+                skipped = timeline.get_next_log_after_event('skipped_query', event)
+                if skipped['query']['query_id'] == event['query']['query_id']:
+                    continue
+            except FileNotFoundError:
+                pass
+
+            query_id = str(event['query']['query_id'])
+
+            # Skip if no KTU data for this query
+            if query_id not in ktu_data or system_key not in ktu_data[query_id]:
+                continue
+
+            # Get KTU and assign to bin
+            ktu_value = ktu_data[query_id][system_key]
+            bin_index = assign_ktu_bin(ktu_value)
+
+            # Check if ground truth relevances are all 0
+            ground_truth_relevances = [qrels_binarized[query_id].get(result['docno'], 0) for result in event['results']]
+            if all(rel == 0 for rel in ground_truth_relevances):
+                continue
+
+            try:
+                next_search_or_end = timeline.get_next_log_after_event('search_results', event)
+            except FileNotFoundError:
+                try:
+                    next_search_or_end = timeline.get_next_log_after_event('end_experiment', event)
+                except FileNotFoundError:
+                    continue
+
+            # Get expand clicks
+            expand_logs = timeline.get_events_between(event, next_search_or_end, 'expand_result')
+            expand_indices = set(log['index'] for log in expand_logs)
+            expanded_relevances = [1 if i in expand_indices else 0 for i in range(len(ground_truth_relevances))]
+
+            # Get choose clicks
+            try:
+                final_choose_log = timeline.get_next_log_after_event('confirmed', event)
+                chosen_indices = final_choose_log['chosen_indices']
+                chosen_relevance = [1 if i in chosen_indices else 0 for i in range(len(ground_truth_relevances))]
+            except FileNotFoundError:
+                chosen_indices = []
+                chosen_relevance = [0] * len(ground_truth_relevances)
+
+            # Calculate and store metrics for each click type
+            for click_type, relevances, indices in [
+                ('expand', expanded_relevances, expand_indices),
+                ('choose', chosen_relevance, chosen_indices)
+            ]:
+                # CTR@5
+                ctr_at_5 = len([i for i in indices if isinstance(i, int) and i < 5]) / 5
+                metrics_by_bin[click_type]['ctr@5'][bin_index].append(ctr_at_5)
+
+                # Calculate other metrics
+                if indices:
+                    mrr = np.mean([1 / (rank + 1) for rank in indices if isinstance(rank, int)])
+                    metrics_by_bin[click_type]['mrr'][bin_index].append(mrr)
+
+                ndcg = ndcg_at_k(relevances, 5)
+                metrics_by_bin[click_type]['ndcg@5'][bin_index].append(ndcg)
+
+                ap = average_precision(relevances[:5])
+                metrics_by_bin[click_type]['ap@5'][bin_index].append(ap)
+
+                precision = sum(relevances[:5]) / 5
+                metrics_by_bin[click_type]['precision@5'][bin_index].append(precision)
+
+    # Convert defaultdict to regular dict for serialization
+    metrics_dict = {
+        click_type: {
+            metric: list(values) for metric, values in click_metrics.items()
+        } for click_type, click_metrics in metrics.items()
+    }
+
+    questionnaire_dict = {
+        question: list(answers) for question, answers in questionnaire_data.items()
+    }
+
+    # Convert binned metrics to regular dict - removing defaultdict
+    binned_metrics_dict = {}
+    for click_type, click_metrics in metrics_by_bin.items():
+        if click_type not in binned_metrics_dict:
+            binned_metrics_dict[click_type] = {}
+        for metric, bin_metrics in click_metrics.items():
+            if metric not in binned_metrics_dict[click_type]:
+                binned_metrics_dict[click_type][metric] = {}
+            for bin_idx, values in bin_metrics.items():
+                binned_metrics_dict[click_type][metric][bin_idx] = list(values)
+
+    return (
+        condition_key, metrics_dict, questionnaire_dict, binned_metrics_dict, num_included_queries, user_id)
+
+
+def merge_results(result, all_metrics, all_questionnaire_data, all_metrics_by_bin):
+    if result is None:
+        return
+
+    condition_key, metrics, questionnaire_data, binned_metrics, num_queries, user_id = result
+
+    # Merge metrics
+    for click_type, click_metrics in metrics.items():
+        for metric, values in click_metrics.items():
+            all_metrics[condition_key][click_type][metric].extend(values)
+
+    # Merge questionnaire data
+    for question, answers in questionnaire_data.items():
+        all_questionnaire_data[condition_key][question].extend(answers)
+
+    # Merge binned metrics
+    for click_type, click_metrics in binned_metrics.items():
+        if click_type not in all_metrics_by_bin[condition_key]:
+            all_metrics_by_bin[condition_key][click_type] = {}
+
+        for metric, bin_metrics in click_metrics.items():
+            if metric not in all_metrics_by_bin[condition_key][click_type]:
+                all_metrics_by_bin[condition_key][click_type][metric] = {}
+
+            for bin_idx, values in bin_metrics.items():
+                if bin_idx not in all_metrics_by_bin[condition_key][click_type][metric]:
+                    all_metrics_by_bin[condition_key][click_type][metric][bin_idx] = []
+                all_metrics_by_bin[condition_key][click_type][metric][bin_idx].extend(values)
+
+
 def process_logs(logs_input=None, n_processes=None, force_reload=False):
     if os.path.exists("processed_logs.pkl") and not force_reload:
         with open("processed_logs.pkl", "rb") as f:
@@ -355,9 +475,11 @@ def process_logs(logs_input=None, n_processes=None, force_reload=False):
                 "INFO: loading processed log data from pickle. If you need to start over, please delete processed_logs.pkl (and df_test_log.bin).")
             return tuple(pickle.load(f))
     logs = logs_input if logs_input is not None else Logs("test_log")
+
     # Initialize the base dictionaries with proper default factories
     all_metrics = create_default_conditions()
     all_questionnaire_data = defaultdict(lambda: defaultdict(list))
+    all_metrics_by_bin = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
 
     # Prepare arguments for parallel processing
     args_list = []
@@ -378,21 +500,185 @@ def process_logs(logs_input=None, n_processes=None, force_reload=False):
             # Merge results
             for result in results:
                 if result and result is not None:
-                    merge_results(result, all_metrics, all_questionnaire_data)
+                    merge_results(result, all_metrics, all_questionnaire_data, all_metrics_by_bin)
     else:
         # Process as single result (multiprocessing is handled by the progressive analysis)
         for args in tqdm.tqdm(args_list, bar_format='{l_bar}{bar}|'):
             result = process_single_user(args)
-            merge_results(result, all_metrics, all_questionnaire_data)
+            merge_results(result, all_metrics, all_questionnaire_data, all_metrics_by_bin)
 
     with open("processed_logs.pkl", "wb") as f:
+        # Convert defaultdicts to regular dicts for serialization
+        regular_metrics = dict(
+            (condition_key, dict(
+                (click_type, dict(
+                    (metric, list(values)) for metric, values in click_metrics.items()
+                )) for click_type, click_metrics in condition_metrics.items()
+            )) for condition_key, condition_metrics in all_metrics.items()
+        )
+
         regular_questionnaire_data = dict(
             (k, dict(v)) for k, v in all_questionnaire_data.items()
         )
-        res = [all_metrics, regular_questionnaire_data]
-        pickle.dump(res, f)
-    return all_metrics, all_questionnaire_data
 
+        # Convert binned metrics to regular nested dictionaries
+        regular_metrics_by_bin = {}
+        for condition_key, condition_metrics in all_metrics_by_bin.items():
+            regular_metrics_by_bin[condition_key] = {}
+            for click_type, click_metrics in condition_metrics.items():
+                regular_metrics_by_bin[condition_key][click_type] = {}
+                for metric, bin_metrics in click_metrics.items():
+                    regular_metrics_by_bin[condition_key][click_type][metric] = {}
+                    for bin_idx, values in bin_metrics.items():
+                        regular_metrics_by_bin[condition_key][click_type][metric][bin_idx] = list(values)
+
+        res = [regular_metrics, regular_questionnaire_data, regular_metrics_by_bin]
+        pickle.dump(res, f)
+
+    return all_metrics, all_questionnaire_data, all_metrics_by_bin
+
+
+def create_ktu_bin_plots(all_metrics_by_bin):
+    """Create plots for metrics by KTU bin."""
+    import os
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    results_dir = "results"
+    os.makedirs(results_dir, exist_ok=True)
+
+    # Define system names based on CONDITIONS
+    system_names = {}
+    for cond_id, cond in CONDITIONS.items():
+        key = f"b={cond['b']},k1={cond['k1']},batch_size={cond['batch_size']}"
+        if cond_id == 0:
+            system_names[key] = "ORIGINAL"
+        elif cond_id == 1:
+            system_names[key] = "REP1"
+        elif cond_id == 2:
+            system_names[key] = "REP2"
+        elif cond_id == 3:
+            system_names[key] = "REP3"
+        elif cond_id == 4:
+            system_names[key] = "REP4"
+        elif cond_id == 5:
+            system_names[key] = "REP5"
+        elif cond_id == 7:
+            system_names[key] = "REP6"
+
+    # Define specific colors for each system
+    system_colors = {
+        "ORIGINAL": "orange",
+        "REP1": "cyan",
+        "REP2": "violet",
+        "REP3": "blue",
+        "REP4": "green",
+        "REP5": "brown",
+        "REP6": "pink"
+    }
+
+    # Plot for both 'choose' and 'expand' click types
+    click_types = ['choose', 'expand']
+
+    for click_type in click_types:
+        for metric in ['ctr@5', 'ndcg@5', 'ap@5', 'precision@5', 'mrr']:
+            # Check if we have data for this combination
+            has_data = False
+            for condition_key in all_metrics_by_bin:
+                if click_type in all_metrics_by_bin[condition_key] and metric in all_metrics_by_bin[condition_key][
+                    click_type]:
+                    has_data = True
+                    break
+
+            if not has_data:
+                continue
+
+            plt.figure(figsize=(12, 6))
+
+            # Create x-axis (bin centers)
+            bins = range(-4, 6)
+
+            # Sort condition keys by their label in system_names
+            condition_order = {}
+            for condition_key in all_metrics_by_bin.keys():
+                if condition_key in system_names:
+                    if system_names[condition_key] == "ORIGINAL":
+                        condition_order[condition_key] = 0
+                    else:
+                        # Extract the number from REP1, REP2, etc.
+                        rep_num = int(system_names[condition_key][3:])
+                        condition_order[condition_key] = rep_num
+                else:
+                    # Put unknown conditions at the end
+                    condition_order[condition_key] = 999
+
+            # Sort conditions by their order
+            sorted_conditions = sorted(all_metrics_by_bin.keys(), key=lambda k: condition_order.get(k, 999))
+
+            # Plot each condition
+            for condition_key in sorted_conditions:
+                if click_type not in all_metrics_by_bin[condition_key] or metric not in \
+                        all_metrics_by_bin[condition_key][
+                            click_type]:
+                    continue
+
+                bin_values = []
+                valid_bins = []
+                for bin_idx in bins:
+                    if bin_idx in all_metrics_by_bin[condition_key][click_type][metric]:
+                        values = all_metrics_by_bin[condition_key][click_type][metric][bin_idx]
+                        if values:
+                            bin_values.append(np.mean(values))
+                            valid_bins.append(bin_idx)
+                        else:
+                            bin_values.append(np.nan)
+                            valid_bins.append(bin_idx)
+                    else:
+                        bin_values.append(np.nan)
+                        valid_bins.append(bin_idx)
+
+                # Filter out NaN values for plotting
+                valid_x = []
+                valid_y = []
+                for i, (x, y) in enumerate(zip(valid_bins, bin_values)):
+                    if not np.isnan(y):
+                        valid_x.append(x)
+                        valid_y.append(y)
+
+                # Get the system name and color
+                parts = condition_key.split(',')
+                b = parts[0].split('=')[1]
+                k1 = parts[1].split('=')[1]
+                bs = parts[2].split('=')[1]
+
+                # Use system name if available, otherwise use condition parameters
+                system_name = system_names.get(condition_key, f"b={b},k1={k1},bs={bs}")
+
+                # Get color for this system
+                if system_name in system_colors:
+                    color = system_colors[system_name]
+                else:
+                    # Use default color cycle for unknown systems
+                    color = None
+
+                # Plot with straight lines connecting the points
+                if color:
+                    line, = plt.plot(valid_x, valid_y, color=color, marker='o', label=system_name)
+                else:
+                    line, = plt.plot(valid_x, valid_y, marker='o', label=system_name)
+
+            plt.xlabel('Bin')
+            plt.ylabel(metric)
+            plt.title(f'{metric} by KTU Bin ({click_type})')
+            plt.grid(True, linestyle='--', alpha=0.7)
+            plt.legend()
+            plt.xticks(bins)
+            plt.ylim(0, 1)
+
+            # Save the plot as high-resolution PDF
+            plt.savefig(f"{results_dir}/{metric}_{click_type}_by_ktu_bin.pdf", dpi=600, bbox_inches='tight',
+                        format='pdf')
+            plt.close()
 
 def get_condition_id(condition_str):
     """Convert condition string to condition ID based on CONDITIONS dictionary"""
@@ -581,7 +867,10 @@ if __name__ == '__main__':
     db_logs = Logs("test_log")
     combined_logs = db_logs
 
-    all_metrics, all_questionnaire_data = process_logs(combined_logs)
+    all_metrics, all_questionnaire_data, all_metrics_by_bin = process_logs(combined_logs)
+
+    # Create KTU bin plots
+    create_ktu_bin_plots(all_metrics_by_bin)
 
     choose_metrics = {metric: [] for metric in all_metrics["b=0.5,k1=0.8,batch_size=4"]['choose'].keys()}
     expand_metrics = {metric: [] for metric in all_metrics["b=0.5,k1=0.8,batch_size=4"]['choose'].keys()}
