@@ -909,7 +909,7 @@ class MultiRunIncrementalAnalysis:
                     continue
 
             # Create shuffled version of data
-            shuffled_dir = self._shuffle_csv_files(Path("simulation"))
+            shuffled_dir = self._shuffle_csv_files(Path(self.base_dir))
 
             # Create new analysis instance for this run
             run_analysis = IncrementalProgressiveAnalysis(
@@ -1087,22 +1087,31 @@ if __name__ == '__main__':
     plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
     plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
     try:
-        # Create multi-run analysis instance
-        multi_analysis = MultiRunIncrementalAnalysis(base_dir='simulation', n_runs=5)
-
-        # Run base analysis
-        db_logs = Logs("test_log")
+        # Define subdirectories to process
+        subdirectories = ['dbn', 'dcm', 'dctr', 'pbm']
 
         # Run incremental analysis with multiple runs
         percentages = [0.001, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
         y_values = range(1, 6)
 
-        # Run multiple analyses
-        multi_analysis.run_multiple_analyses(db_logs, percentages, y_values)
+        # Run base analysis once (shared across all subdirectories)
+        db_logs = Logs("test_log")
 
-        # Create averaged plots
-        multi_analysis.create_averaged_plots()
+        # Process each subdirectory
+        for subdir in subdirectories:
+            print(f"\n\n=== Processing subdirectory: {subdir} ===\n\n")
 
+            # Create multi-run analysis instance for this subdirectory
+            subdir_path = Path('simulation') / subdir
+            multi_analysis = MultiRunIncrementalAnalysis(base_dir=str(subdir_path), n_runs=5)
+
+            # Run multiple analyses for this subdirectory
+            multi_analysis.run_multiple_analyses(db_logs, percentages, y_values)
+
+            # Create averaged plots for this subdirectory
+            multi_analysis.create_averaged_plots()
+
+        # Create a single legend file in the main simulation directory
         save_standalone_legend()
 
     except Exception as e:

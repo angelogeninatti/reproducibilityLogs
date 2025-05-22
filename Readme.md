@@ -14,12 +14,12 @@ The repository includes both raw data and intermediate computational results. Re
 1. Use the provided intermediate files to reproduce specific analysis steps. In this case, no further action is required and the analysis may be run via:
    1. `python3 base_analysis.py` to run the analysis on the user study data, followed by `python3 merge.py` to generate cleaner outputs from the base analysis. This will result in the generation of `results/merged_questionnaire_results.csv` and `results/merged_statistics_*_*.csv`, which contain the final aggregated results of the analysis. Additionally, run `python3 relevance_statistics.py` to see the percentage of chosen items which were relevant according to the TREC dataset.
    2. `python3 sample_based_simulations.py` to simulate clicks with models trained on different data splits. The simulated clicks can be found in `simulations/`.
-   3. `python3 ProgressiveAnalysis.py` to run the progressive analysis on the combined data (both from real and simulated users). This will result in the generation of `simulation/averaged_results` containing the final aggregated results of the progressive analysis.
+   3. `python3 ProgressiveAnalysis.py` to run the progressive analysis on the combined data (both from real and simulated users). This will process each subdirectory in `simulation` (dbn, dcm, dctr, pbm) and generate `simulation/[subdirectory]/averaged_results` containing the final aggregated results of the progressive analysis for each subdirectory.
 2. Replicate the complete pipeline from raw data. You can run the entire pipeline from scratch by deleting all the intermediate files, or selectively delete specific files to re-run only specific parts of the analysis. The following steps provide a guide for this approach:
   -  **Using raw data**: if you prefer to use the raw experimental data instead of the snapshot, you can upload `user_study.csv` to a MySQL database, and set the connection parameters in `connection_data.py`. Then, delete the database snapshot (`df_test_log.bin`) and the pre-processed data for the analysis (`processed_logs.pkl`).
   -  **Removing the processed data of the base analysis**: if you prefer to perform the base analysis from scratch, delete `processed_logs.pkl` and run `python3 base_analysis.py`.
   -  **Generating sampled user data from scratch**: if you prefer to generate new samples from the user study data, delete the `sampled` folder and run `python3 sample_dataset.py`.
-  -  **Removing the processed data of the progressive analysis**: if you prefer to run the progressive analysis from scratch, delete the `simulation/multi_runs`. Please note that this may take several hours to complete, as it requires running the analysis multiple times on multiple large datasets.
+  -  **Removing the processed data of the progressive analysis**: if you prefer to run the progressive analysis from scratch, delete the `simulation/[subdirectory]/multi_runs` folders for each subdirectory (dbn, dcm, dctr, pbm). Please note that this may take several hours to complete, as it requires running the analysis multiple times on multiple large datasets.
   -  Proceed with the execution of the complete pipeline as described in the previous point (1.i, 1.ii, 1.iii).
 
 ## Implementation Structure
@@ -112,15 +112,15 @@ Generates random samples from the user study dataset. Researchers may:
 #### `ProgressiveAnalysis.py`
 Implementation of progressive analysis methodology, combining data from the sampled versions of the user study and the generated clicks.
 Input:
-- `simulation` folder containing the sampled versions of the user study
+- `simulation` folder with subdirectories (dbn, dcm, dctr, pbm) containing the sampled versions of the user study
 
-Output in `simulation/averaged_results` for each metric and signal (either choose or expand):
+Output in `simulation/[subdirectory]/averaged_results` for each metric and signal (either choose or expand):
 - `*_*_averaged_diff.png` evolution of the difference between the base condition (with no generated data) and each metric/condition when progressively adding more simulated data.
 - `*_*_t_test_averaged_results.png` and `*_*_tost_averaged_results.png` evolution of the statistical test results between each condition and the original one.
 - `*_*_welch_vs_base_averaged_results.png` evolution of the Welch statistical test results between each condition and the original one.
 
 Execution options:
-- Keep `simulations/multi_runs` to only generate the analysis from the cached data
+- Keep `simulation/[subdirectory]/multi_runs` to only generate the analysis from the cached data for each subdirectory
 - Delete it to run the complete pipeline (this may take several hours)
 
 ### Auxiliary Modules
