@@ -553,15 +553,15 @@ def create_ktu_bin_plots(all_metrics_by_bin):
         key = f"b={cond['b']},k1={cond['k1']},batch_size={cond['batch_size']}"
         if cond_id == 0:
             system_names[key] = "ORIGINAL"
-        elif cond_id == 1:
-            system_names[key] = "REP1"
-        elif cond_id == 2:
-            system_names[key] = "REP2"
-        elif cond_id == 3:
-            system_names[key] = "REP3"
-        elif cond_id == 4:
-            system_names[key] = "REP4"
         elif cond_id == 5:
+            system_names[key] = "REP1"
+        elif cond_id == 1:
+            system_names[key] = "REP2"
+        elif cond_id == 4:
+            system_names[key] = "REP3"
+        elif cond_id == 3:
+            system_names[key] = "REP4"
+        elif cond_id == 2:
             system_names[key] = "REP5"
         elif cond_id == 7:
             system_names[key] = "REP6"
@@ -569,11 +569,11 @@ def create_ktu_bin_plots(all_metrics_by_bin):
     # Define specific colors for each system
     system_colors = {
         "ORIGINAL": "orange",
-        "REP1": "cyan",
-        "REP2": "violet",
-        "REP3": "blue",
-        "REP4": "green",
-        "REP5": "brown",
+        "REP1": "brown",
+        "REP2": "cyan",
+        "REP3": "green",
+        "REP4": "blue",
+        "REP5": "violet",
         "REP6": "pink"
     }
 
