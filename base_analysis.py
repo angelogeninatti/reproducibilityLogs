@@ -667,13 +667,16 @@ def create_ktu_bin_plots(all_metrics_by_bin):
                 else:
                     line, = plt.plot(valid_x, valid_y, marker='o', label=system_name)
 
-            plt.xlabel('Bin')
-            plt.ylabel(metric)
-            plt.title(f'{metric} by KTU Bin ({click_type})')
+            plt.xlabel('Bin', fontsize=20)
+            plt.ylabel(metric, fontsize=20)
+            #plt.title(f'{metric} by KTU Bin ({click_type})')
             plt.grid(True, linestyle='--', alpha=0.7)
-            plt.legend()
+            #plt.legend()
             plt.xticks(bins)
             plt.ylim(0, 1)
+
+            plt.tick_params(axis='x', labelsize=20)
+            plt.tick_params(axis='y', labelsize=20)
 
             # Save the plot as high-resolution PDF
             plt.savefig(f"{results_dir}/{metric}_{click_type}_by_ktu_bin.pdf", dpi=600, bbox_inches='tight',
