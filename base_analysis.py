@@ -674,16 +674,21 @@ def create_ktu_bin_plots(all_metrics_by_bin):
                 ktu_max = (bin_idx + 5) / 5 - 1
                 ktu_labels.append(f'[{ktu_min:.1f}, {ktu_max:.1f})')
             
-            plt.xlabel('KTU Interval', fontsize=20)
-            plt.ylabel(metric, fontsize=20)
+            plt.xlabel('KTU Interval', fontsize=40)
+            plt.ylabel(metric.upper(), fontsize=40)
             #plt.title(f'{metric} by KTU Bin ({click_type})')
             plt.grid(True, linestyle='--', alpha=0.7)
             #plt.legend()
-            plt.xticks(bins, ktu_labels, rotation=45)
+            # Show every other x-tick to reduce crowding, ensuring alignment
+            selected_bins = bins[::2]
+            selected_labels = [ktu_labels[i] for i in range(0, len(ktu_labels), 2)]
+            plt.xticks(selected_bins, selected_labels, rotation=45)
             plt.ylim(0, 1)
+            # Y-ticks at 0.2 intervals
+            plt.yticks(np.arange(0, 1.1, 0.2))
 
-            plt.tick_params(axis='x', labelsize=20)
-            plt.tick_params(axis='y', labelsize=20)
+            plt.tick_params(axis='x', labelsize=40)
+            plt.tick_params(axis='y', labelsize=40)
 
             # Save the plot as high-resolution PDF
             plt.savefig(f"{results_dir}/{metric}_{click_type}_by_ktu_bin.pdf", dpi=600, bbox_inches='tight',
