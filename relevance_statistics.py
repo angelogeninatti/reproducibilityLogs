@@ -27,7 +27,7 @@ for user_id, timeline in db_logs.items():
             query_id = log['query_id']
             doc_id = log['docno']
             relevance = qrels[str(query_id)].get(doc_id, 0)
-            if relevance > 0:
+            if relevance >= 2:
                 relevant_chosen += 1
             total_chosen += 1
 
