@@ -667,12 +667,19 @@ def create_ktu_bin_plots(all_metrics_by_bin):
                 else:
                     line, = plt.plot(valid_x, valid_y, marker='o', label=system_name)
 
-            plt.xlabel('Bin', fontsize=20)
+            # Create KTU interval labels for x-axis
+            ktu_labels = []
+            for bin_idx in bins:
+                ktu_min = (bin_idx + 4) / 5 - 1
+                ktu_max = (bin_idx + 5) / 5 - 1
+                ktu_labels.append(f'[{ktu_min:.1f}, {ktu_max:.1f})')
+            
+            plt.xlabel('KTU Interval', fontsize=20)
             plt.ylabel(metric, fontsize=20)
             #plt.title(f'{metric} by KTU Bin ({click_type})')
             plt.grid(True, linestyle='--', alpha=0.7)
             #plt.legend()
-            plt.xticks(bins)
+            plt.xticks(bins, ktu_labels, rotation=45)
             plt.ylim(0, 1)
 
             plt.tick_params(axis='x', labelsize=20)
