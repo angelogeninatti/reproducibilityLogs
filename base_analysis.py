@@ -885,6 +885,12 @@ def statistical_tests_questionnaire(questionnaire_data, label, questions):
 
             t_stat, t_p_value = stats.ttest_ind(base_values, comp_values, equal_var=False)
 
+            # Calculate effect size (Cohen's d)
+            effect_size = cohens_d(base_values, comp_values)
+
+            # Calculate confidence interval for mean difference
+            ci_lower, ci_upper = confidence_interval_mean_diff(base_values, comp_values)
+
             pooled_std = np.std(np.concatenate([base_values, comp_values]))
             epsilon = 0.25 * pooled_std
             classic_p = tost_test(base_values, comp_values, epsilon)
@@ -894,6 +900,9 @@ def statistical_tests_questionnaire(questionnaire_data, label, questions):
                 'comparison_condition': condition_id,
                 't_test_p_value': round(t_p_value, 2),
                 'classic_tost_p_value': round(classic_p, 3),
+                'cohens_d': round(effect_size, 3),
+                'ci_lower': round(ci_lower, 3),
+                'ci_upper': round(ci_upper, 3),
             })
 
     # Save results

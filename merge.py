@@ -101,8 +101,11 @@ def merge_questionnaire_data():
 
                 if not stats_data.empty:
                     stats_data = stats_data.iloc[0]
+                    cohens_d = stats_data['cohens_d'] if 'cohens_d' in stats_data else np.nan
+                    ci_lower = stats_data['ci_lower'] if 'ci_lower' in stats_data else np.nan
+                    ci_upper = stats_data['ci_upper'] if 'ci_upper' in stats_data else np.nan
                     row_data[get_condition_label(
-                        condition)] = f"{condition_data['mean']} ({condition_data['std']})\n{stats_data['t_test_p_value']},{stats_data['classic_tost_p_value']}"
+                        condition)] = f"{condition_data['mean']} ({condition_data['std']})\n{stats_data['t_test_p_value']},{stats_data['classic_tost_p_value']}\nd={cohens_d:.3f}, CI=[{ci_lower:.3f}, {ci_upper:.3f}]"
                 else:
                     row_data[get_condition_label(condition)] = f"{condition_data['mean']} ({condition_data['std']})"
 
