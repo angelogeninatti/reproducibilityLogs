@@ -17,15 +17,18 @@ load_dotenv()
 
 from logs import Logs
 
+
 def load_ktu_data(ktu_file='./results/ktu.pkl'):
     """Load KTU values from the pickle file."""
     with open(ktu_file, 'rb') as f:
         return pickle.load(f)
 
+
 def assign_ktu_bin(ktu_value):
     """Assign a bin (-4 to 5) based on KTU value (-1 to 1)."""
     bin_index = int((ktu_value + 1) * 5) - 5
     return max(min(bin_index, 5), -4)
+
 
 # Add classic TOST test function
 def tost_test(x, y, epsilon):
@@ -264,6 +267,7 @@ def create_default_click_types():
 
 def create_default_conditions():
     return defaultdict(create_default_click_types)
+
 
 def format_pvalue_table(test_results, metrics_list, click_type):
     # Define the conditions in order
@@ -673,12 +677,12 @@ def create_ktu_bin_plots(all_metrics_by_bin):
                 ktu_min = (bin_idx + 4) / 5 - 1
                 ktu_max = (bin_idx + 5) / 5 - 1
                 ktu_labels.append(f'[{ktu_min:.1f}, {ktu_max:.1f})')
-            
-            plt.xlabel('KTU Interval', fontsize=40)
-            plt.ylabel(metric.upper(), fontsize=40)
-            #plt.title(f'{metric} by KTU Bin ({click_type})')
+
+            plt.xlabel('KTU Interval', fontsize=30)
+            plt.ylabel(metric.upper(), fontsize=30)
+            # plt.title(f'{metric} by KTU Bin ({click_type})')
             plt.grid(True, linestyle='--', alpha=0.7)
-            #plt.legend()
+            # plt.legend()
             # Show every other x-tick to reduce crowding, ensuring alignment
             selected_bins = bins[::2]
             selected_labels = [ktu_labels[i] for i in range(0, len(ktu_labels), 2)]
@@ -687,13 +691,14 @@ def create_ktu_bin_plots(all_metrics_by_bin):
             # Y-ticks at 0.2 intervals
             plt.yticks(np.arange(0, 1.1, 0.2))
 
-            plt.tick_params(axis='x', labelsize=40)
-            plt.tick_params(axis='y', labelsize=40)
+            plt.tick_params(axis='x', labelsize=30)
+            plt.tick_params(axis='y', labelsize=30)
 
             # Save the plot as high-resolution PDF
             plt.savefig(f"{results_dir}/{metric}_{click_type}_by_ktu_bin.pdf", dpi=600, bbox_inches='tight',
                         format='pdf')
             plt.close()
+
 
 def get_condition_id(condition_str):
     """Convert condition string to condition ID based on CONDITIONS dictionary"""
@@ -750,6 +755,37 @@ def save_basic_metrics(all_metrics, all_questionnaire_data):
     df_quest.to_csv(f"{results_dir}/questionnaire_basic.csv", index=False)
 
 
+def cohens_d(x, y):
+    """Calculate Cohen's d effect size."""
+    nx = len(x)
+    ny = len(y)
+    dof = nx + ny - 2
+    return (np.mean(x) - np.mean(y)) / np.sqrt(((nx-1)*np.std(x, ddof=1)**2 + (ny-1)*np.std(y, ddof=1)**2) / dof)
+
+
+def confidence_interval_mean_diff(x, y, confidence=0.95):
+    """Calculate confidence interval for the difference of means."""
+    nx = len(x)
+    ny = len(y)
+    mean_diff = np.mean(x) - np.mean(y)
+
+    # Pooled standard error
+    se = np.sqrt(np.var(x, ddof=1) / nx + np.var(y, ddof=1) / ny)
+
+    # Degrees of freedom (Welch-Satterthwaite)
+    dof = (np.var(x, ddof=1) / nx + np.var(y, ddof=1) / ny)**2 / \
+          ((np.var(x, ddof=1) / nx)**2 / (nx - 1) + (np.var(y, ddof=1) / ny)**2 / (ny - 1))
+
+    # Critical value from t-distribution
+    t_crit = stats.t.ppf((1 + confidence) / 2, dof)
+
+    # Confidence interval
+    ci_lower = mean_diff - t_crit * se
+    ci_upper = mean_diff + t_crit * se
+
+    return ci_lower, ci_upper
+
+
 def statistical_tests(metrics, label, progressive=False, round_ttest=4, round_tost=7):
     results = []
     tost_results = []
@@ -774,11 +810,20 @@ def statistical_tests(metrics, label, progressive=False, round_ttest=4, round_to
             # T-test
             t_stat, t_p_value = stats.ttest_ind(base_values, comp_values, equal_var=False)
 
+            # Calculate effect size (Cohen's d)
+            effect_size = cohens_d(base_values, comp_values)
+
+            # Calculate confidence interval for mean difference
+            ci_lower, ci_upper = confidence_interval_mean_diff(base_values, comp_values)
+
             results.append({
                 'metric': metric,
                 'label': label,
                 'comparison_condition': condition_id,
                 't_test_p_value': round(t_p_value, round_ttest),
+                'cohens_d': round(effect_size, 3),
+                'ci_lower': round(ci_lower, 3),
+                'ci_upper': round(ci_upper, 3),
             })
 
             # TOST analysis

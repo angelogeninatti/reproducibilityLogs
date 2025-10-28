@@ -60,7 +60,10 @@ def merge_statistical_data(basic_metrics_path, statistical_tests_pattern, tost_t
                 else:
                     t_test_p_val = metric_stat['t_test_p_value'].values[0] if not metric_stat.empty else np.nan
                     tost_p_val = metric_tost['classic_tost_p_value'].values[0] if not metric_tost.empty else np.nan
-                    formatted_content = f"{mean_val:.3f} ({std_val:.3f})\n{t_test_p_val:.3f}, {tost_p_val:.3f}"
+                    cohens_d = metric_stat['cohens_d'].values[0] if not metric_stat.empty else np.nan
+                    ci_lower = metric_stat['ci_lower'].values[0] if not metric_stat.empty else np.nan
+                    ci_upper = metric_stat['ci_upper'].values[0] if not metric_stat.empty else np.nan
+                    formatted_content = f"{mean_val:.3f} ({std_val:.3f})\n{t_test_p_val:.3f}, {tost_p_val:.3f}\nd={cohens_d:.3f}, CI=[{ci_lower:.3f}, {ci_upper:.3f}]"
 
                 result_data[metric][idx] = formatted_content
 
